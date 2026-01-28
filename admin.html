@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Admin</title>
+<meta name="viewport" content="width=device-width">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+body{font-family:Arial;background:#f0f0f0;margin:10px}
+.card{background:#fff;padding:10px;margin-bottom:10px;border-radius:8px}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #ccc;padding:5px}
+</style>
+</head>
+
+<body>
+
+<h2>Painel Administrativo</h2>
+
+<div class="card">
+<label>Data início</label><input type="date" id="di">
+<label>Data fim</label><input type="date" id="df">
+<button onclick="filtrar()">Aplicar</button>
+<button onclick="limpar()">Limpar</button>
+<button onclick="exportarExcel()">Excel</button>
+</div>
+
+<div class="card"><canvas id="g1"></canvas></div>
+<div class="card"><canvas id="g2"></canvas></div>
+<div class="card"><canvas id="g3"></canvas></div>
+<div class="card"><canvas id="g4"></canvas></div>
+
+<script>
+let fichas=[];
+
+function carregar(){ fichas=JSON.parse(localStorage.getItem("fichas"))||[]; atualizar(); }
+
+function filtrar(){
+ const i=di.value,f=df.value;
+ fichas=(JSON.parse(localStorage.getItem("fichas"))||[]).filter(x=>{
+  const d=new Date(x.data);
+  if(i && d<new Date(i)) return false;
+  if(f && d>new Date(f+"T23:59")) return false;
+  return true;
+ });
+ atualizar();
+}
+
+function limpar(){ carregar(); }
+
+function atualizar(){
+ graficoMensal();
+ graficoVeiculo();
+ top5();
+ rankingPecas();
+}
+
+function graficoMensal(){
+ const m={};
+ fichas.forEach(f=>{ const d=f.data.slice(0,7); m[d]=(m[d]||0)+1; });
+ new Chart(g1,{type:"bar",data:{labels:Object.keys(m),datasets:[{data:Object.values(m)}]}});
+}
+
+function graficoVeiculo(){
+ const v={};
+ fichas.forEach(f=>v[f.placa]=(v[f.placa]||0)+1);
+ new Chart(g2,{type:"bar",data:{labels:Object.keys(v),datasets:[{data:Object.values(v)}]}});
+}
+
+function top5(){
+ const v={};
+ fichas.forEach(f=>v[f.placa]=(v[f.placa]||0)+1);
+ const t=Object.entries(v).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ new Chart(g3,{type:"bar",data:{labels:t.map(x=>x[0]),datasets:[{data:t.map(x=>x[1])}]}});
+}
+
+function rankingPecas(){
+ const p={};
+ fichas.forEach(f=>(f.pecas||[]).forEach(x=>p[x.nome]=(p[x.nome]||0)+1));
+ new Chart(g4,{type:"bar",data:{labels:Object.keys(p),datasets:[{data:Object.values(p)}]}});
+}
+
+function exportarExcel(){
+ const ws=XLSX.utils.json_to_sheet(fichas);
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,ws,"Fichas");
+ XLSX.writeFile(wb,"fichas.xlsx");
+}
+
+carregar();
+</script>
+</body>
+</html>
